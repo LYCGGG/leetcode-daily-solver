@@ -1,0 +1,24 @@
+# LeetCode Daily Solver Configuration
+
+# AI Configuration
+ai:
+  provider: openai  # openai, claude
+  model: gpt-4o
+  api_key: ""  # Or set OPENAI_API_KEY / ANTHROPIC_API_KEY env var
+  # base_url: https://api.openai.com/v1  # Optional custom endpoint
+
+# LeetCode Configuration
+leetcode:
+  site: cn  # cn (leetcode.cn) or global (leetcode.com)
+  session: ""  # LEETCODE_SESSION cookie value
+  csrf_token: ""  # csrftoken cookie value
+
+# Schedule Configuration
+schedule:
+  enabled: false
+  time: "08:00"  # HH:MM format
+
+# Solver Configuration
+language: python3  # python3, cpp, java, etc.
+max_retries: 3  # Max retries for code generation
+log_level: INFO  # DEBUG, INFO, WARNING, ERROR
