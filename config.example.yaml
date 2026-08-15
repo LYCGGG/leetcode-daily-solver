@@ -22,3 +22,7 @@ schedule:
 language: python3  # python3, cpp, java, etc.
 max_retries: 3  # Max retries for code generation
 log_level: INFO  # DEBUG, INFO, WARNING, ERROR
+
+# Storage Configuration
+save_problems: true  # Save problems and solutions to files
+problems_dir: "problems"  # Directory to save problems (format: {id:04d}_{title-slug})

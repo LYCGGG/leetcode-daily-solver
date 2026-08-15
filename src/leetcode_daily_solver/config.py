@@ -42,6 +42,8 @@ class Config:
     language: str = "python3"
     max_retries: int = 3
     log_level: str = "INFO"
+    save_problems: bool = True
+    problems_dir: str = "problems"
 
 
 def load_config(config_path: Path | None = None) -> Config:
@@ -92,4 +94,6 @@ def load_config(config_path: Path | None = None) -> Config:
         language=raw.get("language", "python3"),
         max_retries=raw.get("max_retries", 3),
         log_level=raw.get("log_level", "INFO"),
+        save_problems=raw.get("save_problems", True),
+        problems_dir=raw.get("problems_dir", "problems"),
     )

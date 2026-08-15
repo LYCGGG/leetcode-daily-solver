@@ -10,6 +10,7 @@ from loguru import logger
 from .ai_client import AIClient
 from .config import Config
 from .leetcode_client import LeetCodeClient
+from .storage import Storage
 
 
 class DailySolver:
@@ -19,6 +20,7 @@ class DailySolver:
         self.config = config
         self.leetcode = LeetCodeClient(config.leetcode)
         self.ai = AIClient(config.ai)
+        self.storage = Storage(config.problems_dir) if config.save_problems else None
 
     async def solve(self) -> dict:
         """Run the complete solving pipeline."""
@@ -39,21 +41,45 @@ class DailySolver:
             logger.info("Step 1: Fetching daily challenge...")
             challenge = await self.leetcode.get_daily_challenge()
             problem = challenge.get("problem", {})
+            question_id = int(problem.get("questionFrontendId", 0))
             result["problem"] = {
+                "question_id": question_id,
                 "title": problem.get("title"),
                 "difficulty": problem.get("difficulty"),
                 "title_slug": problem.get("titleSlug"),
             }
-            logger.info(f"Problem: {problem.get('title')} ({problem.get('difficulty')})")
+            logger.info(f"Problem: {question_id}. {problem.get('title')} ({problem.get('difficulty')})")
 
             # Step 2: Get full problem details
             logger.info("Step 2: Fetching problem details...")
             full_problem = await self.leetcode.get_problem(problem.get("titleSlug"))
 
+            # Save problem info
+            if self.storage:
+                tags = [tag.get("name", "") for tag in full_problem.get("topicTags", [])]
+                self.storage.save_problem(
+                    question_id=question_id,
+                    date=result["date"],
+                    title=problem.get("title", ""),
+                    title_slug=problem.get("titleSlug", ""),
+                    difficulty=problem.get("difficulty", ""),
+                    tags=tags,
+                    content=full_problem.get("content", ""),
+                )
+
             # Step 3: AI analysis
             logger.info("Step 3: Analyzing problem with AI...")
             analysis = self.ai.analyze_problem(full_problem)
             logger.info(f"Analysis:\n{analysis[:500]}...")
+
+            # Save analysis
+            if self.storage:
+                self.storage.save_analysis(
+                    question_id=question_id,
+                    date=result["date"],
+                    title_slug=problem.get("titleSlug", ""),
+                    analysis=analysis,
+                )
 
             # Step 4-6: Generate, test, fix (with retries)
             code = None
@@ -104,6 +130,16 @@ class DailySolver:
             if submit_result.get("status_msg") == "Accepted":
                 result["status"] = "success"
                 logger.info("✓ Solution accepted!")
+
+                # Save solution code
+                if self.storage and code:
+                    self.storage.save_solution(
+                        question_id=question_id,
+                        date=result["date"],
+                        title_slug=problem.get("titleSlug", ""),
+                        code=code,
+                        language=self.config.language,
+                    )
             else:
                 logger.warning(f"✗ Submission: {submit_result.get('status_msg')}")
 

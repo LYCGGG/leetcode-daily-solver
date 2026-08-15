@@ -28,6 +28,12 @@ build/
 # Config (contains secrets)
 config.yaml
 
+# Saved problems and solutions
+problems/
+
+# Logs
+logs/
+
 # OS
 .DS_Store
 Thumbs.db
