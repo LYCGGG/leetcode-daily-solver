@@ -39,15 +39,20 @@ class AIClient:
     def _clean_code(self, code: str) -> str:
         """清理代码，移除 markdown 标记"""
         if "```" in code:
+            # 提取代码块中的内容
             parts = code.split("```")
             for part in parts:
-                if part.strip() and not part.strip().startswith(("python", "java", "cpp", "javascript")):
-                    code = part.strip()
+                part = part.strip()
+                # 跳过语言标识符行
+                if part.startswith(("python", "java", "cpp", "javascript", "typescript")):
+                    # 移除语言标识符
+                    lines = part.split("\n", 1)
+                    if len(lines) > 1:
+                        code = lines[1].strip()
+                        break
+                elif part and not part.startswith(("```", "python", "java", "cpp", "javascript")):
+                    code = part
                     break
-        for lang in ["python", "java", "cpp", "javascript", "typescript"]:
-            if code.startswith(lang):
-                code = code[len(lang):].strip()
-                break
         return code.strip()
 
     def reset_conversation(self) -> None:
@@ -117,3 +122,24 @@ class AIClient:
         fixed_code = self._call_api(self.conversation, temperature=0.3, max_tokens=2000)
         self.conversation.append({"role": "assistant", "content": fixed_code})
         return self._clean_code(fixed_code)
+
+    def fix_analysis(self, problem: dict, analysis: str, error: str) -> str:
+        """根据错误结果更新分析"""
+        title = problem.get('translatedTitle', '') or problem.get('title', '')
+        
+        prompt = f"""之前的分析有问题，提交到 LeetCode 失败了。
+
+题目: {title}
+错误信息: {error}
+
+之前的分析:
+{analysis}
+
+请重新分析，找出问题所在，并给出正确的解题思路。用中文回答。"""
+
+        # 继续之前的对话上下文
+        self.conversation.append({"role": "user", "content": prompt})
+
+        result = self._call_api(self.conversation, temperature=0.7, max_tokens=1000)
+        self.conversation.append({"role": "assistant", "content": result})
+        return result
