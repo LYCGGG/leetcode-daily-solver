@@ -145,24 +145,39 @@ def run_local_test(code: str, test_cases: list[dict], func_name: str = None) -> 
         # Run each test case
         for i, test_case in enumerate(test_cases):
             try:
-                # Parse inputs
-                args = []
-                for param_name, param_value in test_case.items():
-                    args.append(eval(param_value))
-                
+                has_expected = "expected" in test_case
+                # New format (TestBuilder): {"args": [...], "expected": v}
+                if "args" in test_case:
+                    args = test_case["args"]
+                else:
+                    # Legacy format (official cases): {param_name: json_str}
+                    args = [eval(v) for v in test_case.values()]
+
                 # Call function
                 result = func(*args)
-                
-                # For now, just check if it runs without error
-                logger.debug(f"Test case {i+1}: result = {result}")
-                
+
+                # Compare with expected output if available (differential testing)
+                if has_expected:
+                    expected = test_case["expected"]
+                    if result != expected:
+                        return {
+                            "success": False,
+                            "error": (
+                                f"Test case {i+1} wrong answer: "
+                                f"input={args}, expected={expected}, got={result}"
+                            ),
+                        }
+                    logger.debug(f"Test case {i+1}: result={result} matches expected")
+                else:
+                    logger.debug(f"Test case {i+1}: result = {result}")
+
             except Exception as e:
                 return {
                     "success": False,
                     "error": f"Test case {i+1} failed: {str(e)}",
                     "test_case": test_case,
                 }
-        
+
         return {"success": True}
         
     except Exception as e:

@@ -40,10 +40,11 @@ class Config:
     leetcode: LeetCodeConfig = field(default_factory=LeetCodeConfig)
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
     language: str = "python3"
-    max_retries: int = 3
+    max_retries: int = 5
     log_level: str = "INFO"
     save_problems: bool = True
     problems_dir: str = "problems"
+    num_generated_cases: int = 10
 
 
 def load_config(config_path: Path | None = None) -> Config:
@@ -92,8 +93,9 @@ def load_config(config_path: Path | None = None) -> Config:
             time=raw.get("schedule", {}).get("time", "08:00"),
         ),
         language=raw.get("language", "python3"),
-        max_retries=raw.get("max_retries", 3),
+        max_retries=raw.get("max_retries", 5),
         log_level=raw.get("log_level", "INFO"),
         save_problems=raw.get("save_problems", True),
         problems_dir=raw.get("problems_dir", "problems"),
+        num_generated_cases=raw.get("num_generated_cases", 10),
     )

@@ -192,8 +192,12 @@ class LeetCodeClient:
             check_response = await self._client.get(check_url, headers=self.headers)
             check_data = check_response.json()
 
-            if check_data.get("state") != "PENDING":
+            # 等到拿到最终判定结果（accepted 或 status_msg）才返回
+            if "accepted" in check_data or check_data.get("status_msg") is not None:
                 return check_data
+            if check_data.get("runtime_error") or check_data.get("compile_error"):
+                return check_data
+            logger.debug(f"Run state: {check_data.get('state', '')}, awaiting verdict...")
 
         return {"state": "TIMEOUT", "error": "Execution timed out"}
 
@@ -225,8 +229,10 @@ class LeetCodeClient:
             check_response = await self._client.get(check_url, headers=self.headers)
             check_data = check_response.json()
 
-            if check_data.get("state") != "PENDING":
+            # 等到拿到最终判定结果（status_msg）才返回
+            if check_data.get("status_msg") is not None:
                 return check_data
+            logger.debug(f"Submit state: {check_data.get('state', '')}, awaiting verdict...")
 
         return {"state": "TIMEOUT", "error": "Submission timed out"}
 

@@ -123,14 +123,17 @@ class AIClient:
         self.conversation.append({"role": "assistant", "content": fixed_code})
         return self._clean_code(fixed_code)
 
-    def fix_analysis(self, problem: dict, analysis: str, error: str) -> str:
-        """根据错误结果更新分析"""
+    def fix_analysis(self, problem: dict, analysis: str, error: str, code: str = "") -> str:
+        """根据错误结果和当前代码更新分析"""
         title = problem.get('translatedTitle', '') or problem.get('title', '')
-        
-        prompt = f"""之前的分析有问题，提交到 LeetCode 失败了。
+
+        prompt = f"""之前的分析和代码提交到 LeetCode 后没有通过。
 
 题目: {title}
 错误信息: {error}
+
+之前提交的代码:
+{code}
 
 之前的分析:
 {analysis}
@@ -143,3 +146,57 @@ class AIClient:
         result = self._call_api(self.conversation, temperature=0.7, max_tokens=1000)
         self.conversation.append({"role": "assistant", "content": result})
         return result
+
+    def build_testcases(self, problem: dict, num_cases: int, language: str) -> dict | None:
+        """生成暴力解 + 测试用例输入，用于本地差分验证。失败返回 None。
+
+        返回格式:
+            {"brute_force_code": "<暴力解python代码>", "test_inputs": "<每行一个参数的用例文本>"}
+        """
+        title = problem.get('translatedTitle', '') or problem.get('title', '')
+        content = problem.get('translatedContent', '') or problem.get('content', '')
+        short_content = content[:1000] if content else ''
+
+        prompt = f"""LeetCode 题目: {title}
+难度: {problem.get('difficulty')}
+
+题目描述:
+{short_content}
+
+请生成用于本地差分测试的内容：
+1. 写一个暴力解，命名为 brute_solve 的 Python 函数，参数与题目函数一致(不含 self)。
+   暴力解必须对小规模输入保证正确，可以用递归/枚举，慢没关系，但答案必须正确。如需 import，请包含在代码内。
+2. 生成 {num_cases} 个合法测试输入，覆盖边界情况(空数组、单元素、最值等)，保持小规模(暴力解能秒级出结果)。
+
+严格按以下格式输出，不要 markdown，不要额外解释：
+
+===BRUTE_FORCE_CODE===
+def brute_solve(参数):
+    # 暴力解代码
+===TEST_INPUTS===
+用例1参数1
+用例1参数2
+用例2参数1
+===END===
+
+说明：每个用例的参数按函数参数顺序各占一行。单参数题目每行一个输入。"""
+
+        self.conversation.append({"role": "user", "content": prompt})
+        result = self._call_api(self.conversation, temperature=0.3, max_tokens=2000)
+        self.conversation.append({"role": "assistant", "content": result})
+        return self._parse_build_output(result)
+
+    def _parse_build_output(self, text: str) -> dict | None:
+        """解析 AI 返回的暴力解+用例文本。失败返回 None。"""
+        try:
+            if "===BRUTE_FORCE_CODE===" not in text or "===TEST_INPUTS===" not in text:
+                return None
+            code_part = text.split("===BRUTE_FORCE_CODE===", 1)[1]
+            code_part = code_part.split("===TEST_INPUTS===", 1)[0].strip()
+            inputs_part = text.split("===TEST_INPUTS===", 1)[1]
+            inputs_part = inputs_part.split("===END===", 1)[0].strip()
+            if not code_part or not inputs_part:
+                return None
+            return {"brute_force_code": code_part, "test_inputs": inputs_part}
+        except Exception:
+            return None

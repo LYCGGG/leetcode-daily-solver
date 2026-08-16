@@ -101,7 +101,7 @@ leetcode-daily --run-once -v
 | `leetcode.csrf_token` | CSRF token | - |
 | `schedule.time` | Daily run time | 08:00 |
 | `language` | Programming language | python3 |
-| `max_retries` | Max code generation retries | 3 |
+| `max_retries` | Max code generation retries | 5 |
 | `save_problems` | Save problems to files | true |
 | `problems_dir` | Directory to save problems | problems |
 
