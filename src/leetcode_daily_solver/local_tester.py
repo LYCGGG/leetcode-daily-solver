@@ -93,13 +93,22 @@ def _extract_params(code: str) -> list[str]:
     return []
 
 
-def run_local_test(code: str, test_cases: list[dict], func_name: str = "twoSum") -> dict[str, Any]:
+def _extract_function_name(code: str) -> str:
+    """Extract function name from code."""
+    # Match Python function definition in class
+    match = re.search(r'def\s+(\w+)\s*\(', code)
+    if match:
+        return match.group(1)
+    return "twoSum"  # Default fallback
+
+
+def run_local_test(code: str, test_cases: list[dict], func_name: str = None) -> dict[str, Any]:
     """Run code locally with test cases.
     
     Args:
         code: Python code to test
         test_cases: List of test case dicts
-        func_name: Name of the function to test
+        func_name: Name of the function to test (auto-detect if None)
     
     Returns:
         Dict with success status and error message if any
@@ -107,22 +116,31 @@ def run_local_test(code: str, test_cases: list[dict], func_name: str = "twoSum")
     if not test_cases:
         return {"success": False, "error": "No test cases available"}
     
+    # Auto-detect function name if not provided
+    if func_name is None:
+        func_name = _extract_function_name(code)
+    
     try:
         # Create a temporary module
         namespace = {}
+        # Add List import for type hints
+        exec("from typing import List", namespace)
         exec(code, namespace)
         
         # Get the function
-        if func_name not in namespace:
+        func = None
+        if func_name in namespace:
+            func = namespace[func_name]
+        else:
             # Try to find it in a class
             for name, obj in namespace.items():
                 if isinstance(obj, type) and hasattr(obj, func_name):
-                    func = getattr(obj(), func_name)
+                    instance = obj()
+                    func = getattr(instance, func_name)
                     break
-            else:
-                return {"success": False, "error": f"Function '{func_name}' not found"}
-        else:
-            func = namespace[func_name]
+        
+        if func is None:
+            return {"success": False, "error": f"Function '{func_name}' not found"}
         
         # Run each test case
         for i, test_case in enumerate(test_cases):
@@ -136,7 +154,6 @@ def run_local_test(code: str, test_cases: list[dict], func_name: str = "twoSum")
                 result = func(*args)
                 
                 # For now, just check if it runs without error
-                # In a real implementation, we'd compare with expected output
                 logger.debug(f"Test case {i+1}: result = {result}")
                 
             except Exception as e:
