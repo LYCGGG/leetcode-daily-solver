@@ -3,7 +3,7 @@
 # AI Configuration
 ai:
   provider: openai  # openai, claude
-  model: gpt-4o
+  model: qwen3.8-max-preview
   api_key: ""  # Or set OPENAI_API_KEY / ANTHROPIC_API_KEY env var
   # base_url: https://api.openai.com/v1  # Optional custom endpoint
 

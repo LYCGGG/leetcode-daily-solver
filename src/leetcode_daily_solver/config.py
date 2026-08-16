@@ -13,7 +13,7 @@ import yaml
 class AIConfig:
     """AI model configuration."""
     provider: str = "openai"  # openai, claude, local
-    model: str = "gpt-4o"
+    model: str = "qwen3.8-max-preview"
     api_key: str = ""
     base_url: str | None = None
 
@@ -78,7 +78,7 @@ def load_config(config_path: Path | None = None) -> Config:
     return Config(
         ai=AIConfig(
             provider=raw.get("ai", {}).get("provider", "openai"),
-            model=raw.get("ai", {}).get("model", "gpt-4o"),
+            model=raw.get("ai", {}).get("model", "qwen3.8-max-preview"),
             api_key=raw.get("ai", {}).get("api_key", ""),
             base_url=raw.get("ai", {}).get("base_url"),
         ),

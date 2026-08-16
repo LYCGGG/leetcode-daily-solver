@@ -93,7 +93,7 @@ leetcode-daily --run-once -v
 | Option | Description | Default |
 |--------|-------------|---------|
 | `ai.provider` | AI provider (openai/claude) | openai |
-| `ai.model` | Model name | gpt-4o |
+| `ai.model` | Model name | qwen3.8-max-preview |
 | `ai.api_key` | API key | - |
 | `ai.base_url` | Custom API endpoint | - |
 | `leetcode.site` | LeetCode site (cn/global) | cn |
