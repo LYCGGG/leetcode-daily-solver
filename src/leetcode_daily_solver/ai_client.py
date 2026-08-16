@@ -20,23 +20,27 @@ class AIClient:
 
     def analyze_problem(self, problem: dict) -> str:
         """Analyze a problem and suggest approach."""
-        prompt = f"""Analyze this LeetCode problem and suggest the best approach:
+        # Try to get Chinese content first, fallback to English
+        content = problem.get('translatedContent', '') or problem.get('content', '')
+        title = problem.get('translatedTitle', '') or problem.get('title', '')
 
-Title: {problem.get('title')}
-Difficulty: {problem.get('difficulty')}
-Tags: {[tag.get('name') for tag in problem.get('topicTags', [])]}
-Content: {problem.get('content', '')[:2000]}
+        prompt = f"""分析以下 LeetCode 题目并给出最佳解题思路：
 
-Provide:
-1. Problem understanding
-2. Key insights
-3. Algorithm/data structure to use
-4. Time/space complexity analysis
+标题: {title}
+难度: {problem.get('difficulty')}
+标签: {[tag.get('name') for tag in problem.get('topicTags', [])]}
+题目内容: {content[:2000]}
+
+请用中文提供：
+1. 题目理解
+2. 关键思路
+3. 使用的算法/数据结构
+4. 时间/空间复杂度分析
 """
         response = self.client.chat.completions.create(
             model=self.config.model,
             messages=[
-                {"role": "system", "content": "You are an expert competitive programmer."},
+                {"role": "system", "content": "你是一位资深算法竞赛选手，请用中文回答。"},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.7,

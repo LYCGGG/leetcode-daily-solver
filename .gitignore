@@ -28,9 +28,6 @@ build/
 # Config (contains secrets)
 config.yaml
 
-# Saved problems and solutions
-problems/
-
 # Logs
 logs/
 

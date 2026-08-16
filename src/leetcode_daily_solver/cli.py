@@ -70,7 +70,7 @@ def main() -> None:
     setup_logging("DEBUG" if args.verbose else config.log_level)
 
     if args.language:
-        config = config._replace(language=args.language)
+        config = config.__replace__(language=args.language)
 
     if args.run_once:
         asyncio.run(run_once())

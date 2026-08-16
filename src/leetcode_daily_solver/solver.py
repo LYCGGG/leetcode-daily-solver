@@ -57,14 +57,17 @@ class DailySolver:
             # Save problem info
             if self.storage:
                 tags = [tag.get("name", "") for tag in full_problem.get("topicTags", [])]
+                # Use Chinese title and content if available
+                title = full_problem.get("translatedTitle", "") or problem.get("title", "")
+                content = full_problem.get("translatedContent", "") or full_problem.get("content", "")
                 self.storage.save_problem(
                     question_id=question_id,
                     date=result["date"],
-                    title=problem.get("title", ""),
+                    title=title,
                     title_slug=problem.get("titleSlug", ""),
                     difficulty=problem.get("difficulty", ""),
                     tags=tags,
-                    content=full_problem.get("content", ""),
+                    content=content,
                 )
 
             # Step 3: AI analysis
@@ -104,7 +107,10 @@ class DailySolver:
                     typed_code=code,
                 )
 
-                if test_result.get("state") == "FINISHED" and test_result.get("accepted"):
+                test_state = test_result.get("state", "")
+                test_accepted = test_result.get("status_msg") == "Accepted" or test_result.get("accepted")
+
+                if test_state in ("FINISHED", "SUCCESS") and test_accepted:
                     logger.info("✓ Code accepted!")
                     break
                 else:

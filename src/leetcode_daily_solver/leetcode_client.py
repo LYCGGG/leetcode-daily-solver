@@ -97,7 +97,8 @@ class LeetCodeClient:
             }
             """
             data = await self.graphql(query)
-            today = data.get("todayRecord", {})
+            today_list = data.get("todayRecord", [])
+            today = today_list[0] if today_list else {}
             return {
                 "date": today.get("date"),
                 "problem": today.get("question"),
@@ -138,8 +139,10 @@ class LeetCodeClient:
                 questionId
                 questionFrontendId
                 title
+                translatedTitle
                 titleSlug
                 content
+                translatedContent
                 difficulty
                 acRate
                 topicTags {
