@@ -150,6 +150,7 @@ class LeetCodeClient:
                     slug
                 }
                 hints
+                exampleTestcases
                 codeSnippets {
                     lang
                     langSlug

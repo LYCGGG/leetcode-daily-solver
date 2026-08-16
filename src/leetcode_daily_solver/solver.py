@@ -10,6 +10,7 @@ from loguru import logger
 from .ai_client import AIClient
 from .config import Config
 from .leetcode_client import LeetCodeClient
+from .local_tester import parse_test_cases, run_local_test
 from .storage import Storage
 
 
@@ -69,6 +70,15 @@ class DailySolver:
                     tags=tags,
                     content=content,
                 )
+                
+                # Save test cases
+                example_testcases = full_problem.get("exampleTestcases", "")
+                if example_testcases:
+                    self.storage.save_test_cases(
+                        question_id=question_id,
+                        title_slug=problem.get("titleSlug", ""),
+                        test_cases=example_testcases,
+                    )
 
             # Step 3: AI analysis
             logger.info("Step 3: Analyzing problem with AI...")
@@ -98,8 +108,42 @@ class DailySolver:
 
                 logger.info(f"Generated code:\n{code[:500]}...")
 
-                # Step 5: Test code
-                logger.info("Step 5: Testing code...")
+                # Step 4.5: Local test (before submitting to LeetCode)
+                logger.info("Step 4.5: Running local test...")
+                
+                # Try to load test cases from local cache
+                test_cases_str = None
+                if self.storage:
+                    test_cases_str = self.storage.load_test_cases(
+                        question_id=question_id,
+                        title_slug=problem.get("titleSlug", ""),
+                    )
+                
+                # Fallback to API response
+                if not test_cases_str:
+                    test_cases_str = full_problem.get("exampleTestcases", "")
+                
+                test_cases = parse_test_cases(
+                    test_cases_str,
+                    full_problem.get("codeSnippets", []),
+                    self.config.language,
+                )
+                
+                if test_cases:
+                    local_result = run_local_test(code, test_cases)
+                    if not local_result["success"]:
+                        logger.warning(f"✗ Local test failed: {local_result.get('error')}")
+                        last_error = local_result.get("error", "Local test failed")
+                        if attempt == self.config.max_retries:
+                            logger.error("Max retries reached")
+                        continue
+                    else:
+                        logger.info("✓ Local test passed!")
+                else:
+                    logger.warning("No test cases available for local testing")
+
+                # Step 5: Test code on LeetCode
+                logger.info("Step 5: Testing code on LeetCode...")
                 test_result = await self.leetcode.run_code(
                     title_slug=problem["titleSlug"],
                     question_id=str(problem.get("questionId", "")),

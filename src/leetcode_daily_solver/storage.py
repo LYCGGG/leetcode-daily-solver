@@ -157,6 +157,54 @@ class Storage:
         logger.info(f"Saved solution to {file_path}")
         return file_path
 
+    def save_test_cases(
+        self,
+        question_id: int,
+        title_slug: str,
+        test_cases: str,
+    ) -> Path:
+        """Save test cases to a JSON file.
+
+        Args:
+            question_id: Problem number (e.g., 1, 15, 200)
+            title_slug: URL-friendly title
+            test_cases: Raw test cases string from LeetCode
+
+        Returns:
+            Path to the saved file
+        """
+        problem_dir = self._get_problem_dir(question_id, title_slug)
+        problem_dir.mkdir(parents=True, exist_ok=True)
+
+        file_path = problem_dir / "test_cases.json"
+        file_path.write_text(test_cases, encoding="utf-8")
+        logger.info(f"Saved test cases to {file_path}")
+        return file_path
+
+    def load_test_cases(
+        self,
+        question_id: int,
+        title_slug: str,
+    ) -> str | None:
+        """Load test cases from local file.
+
+        Args:
+            question_id: Problem number (e.g., 1, 15, 200)
+            title_slug: URL-friendly title
+
+        Returns:
+            Test cases string or None if not found
+        """
+        problem_dir = self._get_problem_dir(question_id, title_slug)
+        file_path = problem_dir / "test_cases.json"
+
+        if file_path.exists():
+            test_cases = file_path.read_text(encoding="utf-8")
+            logger.info(f"Loaded test cases from {file_path}")
+            return test_cases
+
+        return None
+
     def save_all(
         self,
         question_id: int,
