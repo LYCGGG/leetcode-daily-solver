@@ -16,16 +16,48 @@ class AIClient:
         self.client = OpenAI(
             api_key=config.api_key,
             base_url=config.base_url,
-            timeout=120.0,  # 2 minute timeout
+            timeout=120.0,
         )
+        self.conversation: list[dict] = []
+
+    def _call_api(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> str:
+        """通用 API 调用方法"""
+        response = self.client.chat.completions.create(
+            model=self.config.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        msg = response.choices[0].message
+        return msg.content or msg.reasoning_content or ""
+
+    def _clean_code(self, code: str) -> str:
+        """清理代码，移除 markdown 标记"""
+        if "```" in code:
+            parts = code.split("```")
+            for part in parts:
+                if part.strip() and not part.strip().startswith(("python", "java", "cpp", "javascript")):
+                    code = part.strip()
+                    break
+        for lang in ["python", "java", "cpp", "javascript", "typescript"]:
+            if code.startswith(lang):
+                code = code[len(lang):].strip()
+                break
+        return code.strip()
+
+    def reset_conversation(self) -> None:
+        """重置对话历史"""
+        self.conversation = []
 
     def analyze_problem(self, problem: dict) -> str:
-        """Analyze a problem and suggest approach."""
-        # Try to get Chinese content first, fallback to English
+        """分析题目并给出解题思路"""
         content = problem.get('translatedContent', '') or problem.get('content', '')
         title = problem.get('translatedTitle', '') or problem.get('title', '')
-
-        # Shorten content to reduce processing time
         short_content = content[:1000] if content else ''
 
         prompt = f"""分析以下 LeetCode 题目并给出解题思路：
@@ -40,81 +72,48 @@ class AIClient:
 2. 解题思路
 3. 算法和复杂度
 """
-        response = self.client.chat.completions.create(
-            model=self.config.model,
-            messages=[
-                {"role": "system", "content": "你是算法专家，请用中文简洁回答。"},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.7,
-            max_tokens=1000,
-        )
-        msg = response.choices[0].message
-        # Mimo may return content in reasoning_content
-        return msg.content or msg.reasoning_content or ""
+        # 重置对话并开始新对话
+        self.reset_conversation()
+        self.conversation = [
+            {"role": "system", "content": "你是算法专家，请用中文简洁回答。"},
+            {"role": "user", "content": prompt},
+        ]
+
+        result = self._call_api(self.conversation, temperature=0.7, max_tokens=1000)
+        self.conversation.append({"role": "assistant", "content": result})
+        return result
 
     def generate_code(self, problem: dict, analysis: str, language: str) -> str:
-        """Generate solution code."""
-        # Get Chinese title if available
+        """生成代码，利用之前的分析上下文"""
         title = problem.get('translatedTitle', '') or problem.get('title', '')
 
-        # Use very simple prompt for Mimo
         prompt = f"用{language}解决LeetCode题目：{title}。只输出代码，格式：class Solution:"
 
-        response = self.client.chat.completions.create(
-            model=self.config.model,
-            messages=[
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.1,
-            max_tokens=2000,
-        )
-        msg = response.choices[0].message
-        code = msg.content or msg.reasoning_content or ""
-        # Clean code block markers
-        if "```" in code:
-            # Extract code from markdown blocks
-            parts = code.split("```")
-            for part in parts:
-                if part.strip() and not part.strip().startswith(("python", "java", "cpp", "javascript")):
-                    code = part.strip()
-                    break
-        # Remove language identifier at start
-        for lang in ["python", "java", "cpp", "javascript", "typescript"]:
-            if code.startswith(lang):
-                code = code[len(lang):].strip()
-                break
-        return code.strip()
+        # 继续之前的对话上下文
+        self.conversation.append({"role": "user", "content": prompt})
+
+        code = self._call_api(self.conversation, temperature=0.1, max_tokens=2000)
+        self.conversation.append({"role": "assistant", "content": code})
+        return self._clean_code(code)
 
     def fix_code(self, problem: dict, code: str, error: str, language: str) -> str:
-        """Fix code based on error feedback."""
-        prompt = f"""Fix this {language} code that has an error:
+        """修复代码，利用之前的对话上下文"""
+        prompt = f"""修复这个{language}代码的错误：
 
-Title: {problem.get('title')}
-Code:
+代码:
 {code}
 
-Error:
+错误:
 {error}
 
-Requirements:
-1. Return ONLY the fixed code, no explanations
-2. Keep the same function signature
-3. Fix the specific error
+要求：
+1. 只返回修复后的代码
+2. 保持相同的函数签名
+3. 修复具体错误
 """
-        response = self.client.chat.completions.create(
-            model=self.config.model,
-            messages=[
-                {"role": "system", "content": f"You are an expert {language} debugger. Return only code, no markdown."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            max_tokens=2000,
-        )
-        msg = response.choices[0].message
-        fixed_code = msg.content or msg.reasoning_content or ""
-        if fixed_code.startswith("```"):
-            fixed_code = fixed_code.split("\n", 1)[1]
-        if fixed_code.endswith("```"):
-            fixed_code = fixed_code.rsplit("```", 1)[0]
-        return fixed_code.strip()
+        # 继续之前的对话上下文
+        self.conversation.append({"role": "user", "content": prompt})
+
+        fixed_code = self._call_api(self.conversation, temperature=0.3, max_tokens=2000)
+        self.conversation.append({"role": "assistant", "content": fixed_code})
+        return self._clean_code(fixed_code)
