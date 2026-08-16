@@ -112,6 +112,16 @@ class DailySolver:
 
                 if test_state in ("FINISHED", "SUCCESS") and test_accepted:
                     logger.info("✓ Code accepted!")
+
+                    # Save solution code after test passes
+                    if self.storage and code:
+                        self.storage.save_solution(
+                            question_id=question_id,
+                            date=result["date"],
+                            title_slug=problem.get("titleSlug", ""),
+                            code=code,
+                            language=self.config.language,
+                        )
                     break
                 else:
                     last_error = self._extract_error(test_result)
