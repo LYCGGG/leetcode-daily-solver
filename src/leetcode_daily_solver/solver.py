@@ -176,6 +176,7 @@ class DailySolver:
                     "runtime": submit_result.get("status_runtime"),
                     "memory": submit_result.get("status_memory"),
                 }
+                logger.debug(f"Submit response keys: {list(submit_result.keys())}")
 
                 if submit_result.get("status_msg") == "Accepted":
                     result["status"] = "success"
@@ -192,10 +193,11 @@ class DailySolver:
                         )
                     break
                 else:
-                    last_error = f"Submission failed: {submit_result.get('status_msg', 'Unknown')}"
+                    # Build detailed error message from submission result
+                    last_error = self._extract_submit_error(submit_result)
                     logger.warning(f"✗ {last_error}")
                     
-                    # Update analysis with error info
+                    # Update analysis with detailed error info
                     logger.info("Updating analysis with error info...")
                     analysis = self.ai.fix_analysis(full_problem, analysis, last_error)
                     
@@ -223,7 +225,7 @@ class DailySolver:
         return result
 
     def _extract_error(self, result: dict) -> str:
-        """Extract error message from result."""
+        """Extract error message from run_code result."""
         if result.get("compile_error"):
             return f"Compile error: {result['compile_error']}"
         if result.get("runtime_error"):
@@ -231,3 +233,23 @@ class DailySolver:
         if result.get("last_testcase"):
             return f"Wrong answer on: {result['last_testcase']}"
         return f"State: {result.get('state', 'unknown')}"
+
+    def _extract_submit_error(self, result: dict) -> str:
+        """Extract detailed error from submit result."""
+        status = result.get("status_msg", "Unknown")
+        parts = [f"Status: {status}"]
+
+        if result.get("input"):
+            parts.append(f"Input: {result['input']}")
+        if result.get("expected_output"):
+            parts.append(f"Expected: {result['expected_output']}")
+        if result.get("code_output"):
+            parts.append(f"Actual: {result['code_output']}")
+        if result.get("last_testcase"):
+            parts.append(f"Last testcase: {result['last_testcase']}")
+        if result.get("runtime_error"):
+            parts.append(f"Runtime error: {result['runtime_error']}")
+        if result.get("compile_error"):
+            parts.append(f"Compile error: {result['compile_error']}")
+
+        return "\n".join(parts)
