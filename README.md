@@ -7,11 +7,13 @@ Automated LeetCode daily challenge solver using AI.
 
 ## Features
 
-- 🤖 **AI-Powered** - Uses GPT-4/Claude to analyze and solve problems
+- 🤖 **AI-Powered** - Uses AI to analyze and solve problems
 - 🔄 **Auto Retry** - Automatically fixes code based on test failures
 - ⏰ **Scheduled Execution** - Run daily at specified time
 - 📝 **Multiple Languages** - Support Python, Java, C++, etc.
 - 📊 **Logging** - Detailed execution logs
+- 💾 **Save Problems** - Save problems, analysis and solutions to files
+- 🇨🇳 **Chinese Support** - Fetch Chinese problem descriptions
 
 ## How It Works
 
@@ -47,13 +49,19 @@ Edit `config.yaml`:
 
 ```yaml
 ai:
-  api_key: "your-openai-api-key"
-  model: gpt-4o
+  provider: openai
+  model: mimo-v2.5-pro
+  api_key: "your-api-key"
+  base_url: "https://api.example.com/v1"
 
 leetcode:
   site: cn
   session: "your-session-cookie"
   csrf_token: "your-csrf-token"
+
+# Storage
+save_problems: true
+problems_dir: "problems"
 ```
 
 Or use environment variables:
@@ -87,12 +95,29 @@ leetcode-daily --run-once -v
 | `ai.provider` | AI provider (openai/claude) | openai |
 | `ai.model` | Model name | gpt-4o |
 | `ai.api_key` | API key | - |
+| `ai.base_url` | Custom API endpoint | - |
 | `leetcode.site` | LeetCode site (cn/global) | cn |
 | `leetcode.session` | Session cookie | - |
 | `leetcode.csrf_token` | CSRF token | - |
 | `schedule.time` | Daily run time | 08:00 |
 | `language` | Programming language | python3 |
 | `max_retries` | Max code generation retries | 3 |
+| `save_problems` | Save problems to files | true |
+| `problems_dir` | Directory to save problems | problems |
+
+## Output Structure
+
+```
+problems/
+  0001_two-sum/
+    problem.md      # Problem description (Chinese)
+    analysis.md     # AI analysis
+    solution.py     # Solution code
+  0015_3sum/
+    problem.md
+    analysis.md
+    solution.java
+```
 
 ## Example Output
 
