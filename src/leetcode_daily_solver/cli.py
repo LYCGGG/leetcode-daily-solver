@@ -21,11 +21,11 @@ def setup_logging(level: str) -> None:
     logger.add("logs/{time:YYYY-MM-DD}.log", rotation="1 day", retention="7 days")
 
 
-async def run_once() -> None:
-    """Run the solver once."""
+async def run_once(title_slug: str | None = None) -> None:
+    """Run the solver once. title_slug 指定时跑指定题目，否则跑每日题。"""
     config = load_config()
     solver = DailySolver(config)
-    result = await solver.solve()
+    result = await solver.solve(title_slug=title_slug)
     return result
 
 
@@ -63,6 +63,7 @@ def main() -> None:
     parser.add_argument("--config", "-c", type=Path, help="Config file path")
     parser.add_argument("--run-once", action="store_true", help="Run once and exit")
     parser.add_argument("--language", "-l", default="python3", help="Programming language")
+    parser.add_argument("--problem", "-p", type=str, default=None, help="Solve a specific problem by titleSlug (default: daily challenge)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
@@ -73,7 +74,7 @@ def main() -> None:
         config = config.__replace__(language=args.language)
 
     if args.run_once:
-        asyncio.run(run_once())
+        asyncio.run(run_once(title_slug=args.problem))
     else:
         run_scheduled()
 

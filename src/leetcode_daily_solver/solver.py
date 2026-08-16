@@ -25,8 +25,12 @@ class DailySolver:
         self.storage = Storage(config.problems_dir) if config.save_problems else None
         self.test_builder = TestBuilder(self.ai)
 
-    async def solve(self) -> dict:
-        """Run the complete solving pipeline."""
+    async def solve(self, title_slug: str | None = None) -> dict:
+        """Run the complete solving pipeline.
+
+        Args:
+            title_slug: 指定题目 slug 时跑该题；为 None 时跑每日挑战。
+        """
         logger.info("=" * 50)
         logger.info("Starting Daily Challenge Solver")
         logger.info("=" * 50)
@@ -40,10 +44,22 @@ class DailySolver:
         }
 
         try:
-            # Step 1: Get daily challenge
-            logger.info("Step 1: Fetching daily challenge...")
-            challenge = await self.leetcode.get_daily_challenge()
-            problem = challenge.get("problem", {})
+            # Step 1: Get daily challenge or specified problem
+            if title_slug:
+                logger.info(f"Step 1: Fetching specified problem: {title_slug}...")
+                challenge = {"date": datetime.now().strftime("%Y-%m-%d"), "problem": None}
+                full_problem = await self.leetcode.get_problem(title_slug)
+                problem = {
+                    "questionId": full_problem.get("questionId", ""),
+                    "questionFrontendId": full_problem.get("questionFrontendId", "0"),
+                    "title": full_problem.get("title", ""),
+                    "difficulty": full_problem.get("difficulty", ""),
+                    "titleSlug": title_slug,
+                }
+            else:
+                logger.info("Step 1: Fetching daily challenge...")
+                challenge = await self.leetcode.get_daily_challenge()
+                problem = challenge.get("problem", {})
             question_id = int(problem.get("questionFrontendId", 0))
             result["problem"] = {
                 "question_id": question_id,
@@ -54,8 +70,9 @@ class DailySolver:
             logger.info(f"Problem: {question_id}. {problem.get('title')} ({problem.get('difficulty')})")
 
             # Step 2: Get full problem details
-            logger.info("Step 2: Fetching problem details...")
-            full_problem = await self.leetcode.get_problem(problem.get("titleSlug"))
+            if not title_slug:
+                logger.info("Step 2: Fetching problem details...")
+                full_problem = await self.leetcode.get_problem(problem.get("titleSlug"))
 
             # Save problem info
             if self.storage:
@@ -217,6 +234,8 @@ class DailySolver:
                     # Build detailed error message from submission result
                     last_error = self._extract_submit_error(submit_result)
                     logger.warning(f"✗ {last_error}")
+                    # 把失败的隐藏用例回填到本地用例集，下一轮直接差分验证
+                    test_cases = self._add_failed_case(submit_result, test_cases)
                     analysis = self._handle_failure(
                         full_problem, analysis, last_error, code,
                         question_id, result["date"], problem.get("titleSlug", ""), attempt,
@@ -297,3 +316,47 @@ class DailySolver:
             parts.append(f"Compile error: {result['compile_error']}")
 
         return "\n".join(parts)
+
+    def _add_failed_case(self, submit_result: dict, test_cases: list) -> list:
+        """把提交失败的隐藏用例回填到本地用例集，供后续尝试差分验证。
+
+        仅对 Wrong Answer 类且带 input+expected_output 的结果有效。
+        """
+        if not submit_result.get("input") or not submit_result.get("expected_output"):
+            return test_cases
+
+        try:
+            input_str = str(submit_result["input"]).strip()
+            expected_str = str(submit_result["expected_output"]).strip()
+
+            # 解析参数：按行拆分（多参数题目每行一个参数）
+            lines = [ln.strip() for ln in input_str.split("\n") if ln.strip()]
+            args = []
+            for ln in lines:
+                if ln in ("true", "false"):
+                    args.append(ln == "true")
+                elif ln in ("null", "None"):
+                    args.append(None)
+                else:
+                    try:
+                        args.append(json.loads(ln))
+                    except Exception:
+                        args.append(ln)
+
+            # 解析期望输出
+            if expected_str in ("true", "false"):
+                expected = expected_str == "true"
+            elif expected_str in ("null", "None"):
+                expected = None
+            else:
+                try:
+                    expected = json.loads(expected_str)
+                except Exception:
+                    expected = expected_str
+
+            new_case = {"args": args, "expected": expected, "source": "hidden"}
+            test_cases.append(new_case)
+            logger.info(f"已回填隐藏用例到本地用例集: input={args}, expected={expected}")
+        except Exception as e:
+            logger.debug(f"回填隐藏用例失败: {e}")
+        return test_cases
