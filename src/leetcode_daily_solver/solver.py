@@ -88,15 +88,6 @@ class DailySolver:
                     tags=tags,
                     content=content,
                 )
-                
-                # Save test cases
-                example_testcases = full_problem.get("exampleTestcases", "")
-                if example_testcases:
-                    self.storage.save_test_cases(
-                        question_id=question_id,
-                        title_slug=problem.get("titleSlug", ""),
-                        test_cases=example_testcases,
-                    )
 
             # Step 3: AI analysis
             logger.info("Step 3: Analyzing problem with AI...")
@@ -113,20 +104,20 @@ class DailySolver:
                 )
 
             # Load test cases for local testing
-            test_cases_str = None
+            test_cases = None
             if self.storage:
-                test_cases_str = self.storage.load_test_cases(
+                test_cases = self.storage.load_test_cases(
                     question_id=question_id,
                     title_slug=problem.get("titleSlug", ""),
                 )
-            if not test_cases_str:
-                test_cases_str = full_problem.get("exampleTestcases", "")
-            
-            test_cases = parse_test_cases(
-                test_cases_str,
-                full_problem.get("codeSnippets", []),
-                self.config.language,
-            )
+            if not test_cases:
+                # 解析官方用例
+                example_testcases = full_problem.get("exampleTestcases", "")
+                test_cases = parse_test_cases(
+                    example_testcases,
+                    full_problem.get("codeSnippets", []),
+                    self.config.language,
+                )
 
             # 差分测试补充用例（可降级：失败则只用官方用例）
             if self.config.num_generated_cases > 0:
@@ -138,6 +129,14 @@ class DailySolver:
                     logger.info(f"已补充 {len(generated_cases)} 个差分测试用例，共 {len(test_cases)} 个")
                 else:
                     logger.info("未生成分差用例，仅使用官方用例")
+
+            # 保存所有用例（官方 + 生成）
+            if self.storage and test_cases:
+                self.storage.save_test_cases(
+                    question_id=question_id,
+                    title_slug=problem.get("titleSlug", ""),
+                    test_cases=test_cases,
+                )
 
             # Step 4-6: Generate, test, submit with auto-fix
             code = None

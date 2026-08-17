@@ -161,23 +161,24 @@ class Storage:
         self,
         question_id: int,
         title_slug: str,
-        test_cases: str,
+        test_cases: list[dict],
     ) -> Path:
         """Save test cases to a JSON file.
 
         Args:
             question_id: Problem number (e.g., 1, 15, 200)
             title_slug: URL-friendly title
-            test_cases: Raw test cases string from LeetCode
+            test_cases: List of test case dicts with 'args', 'expected', 'source'
 
         Returns:
             Path to the saved file
         """
+        import json
         problem_dir = self._get_problem_dir(question_id, title_slug)
         problem_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = problem_dir / "test_cases.json"
-        file_path.write_text(test_cases, encoding="utf-8")
+        file_path.write_text(json.dumps(test_cases, ensure_ascii=False, indent=2), encoding="utf-8")
         logger.info(f"Saved test cases to {file_path}")
         return file_path
 
@@ -185,7 +186,7 @@ class Storage:
         self,
         question_id: int,
         title_slug: str,
-    ) -> str | None:
+    ) -> list[dict] | None:
         """Load test cases from local file.
 
         Args:
@@ -193,14 +194,15 @@ class Storage:
             title_slug: URL-friendly title
 
         Returns:
-            Test cases string or None if not found
+            List of test case dicts or None if not found
         """
+        import json
         problem_dir = self._get_problem_dir(question_id, title_slug)
         file_path = problem_dir / "test_cases.json"
 
         if file_path.exists():
-            test_cases = file_path.read_text(encoding="utf-8")
-            logger.info(f"Loaded test cases from {file_path}")
+            test_cases = json.loads(file_path.read_text(encoding="utf-8"))
+            logger.info(f"Loaded {len(test_cases)} test cases from {file_path}")
             return test_cases
 
         return None

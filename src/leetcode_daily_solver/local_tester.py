@@ -18,7 +18,7 @@ def parse_test_cases(example_testcases: str, code_snippets: list[dict], language
         language: Programming language (e.g., python3)
     
     Returns:
-        List of test case dicts with input params and expected output
+        List of test case dicts with 'args' and 'source' keys
     """
     if not example_testcases:
         return []
@@ -44,10 +44,13 @@ def parse_test_cases(example_testcases: str, code_snippets: list[dict], language
     
     for i in range(0, len(lines), num_params):
         if i + num_params <= len(lines):
-            test_case = {}
-            for j, param_name in enumerate(params):
-                test_case[param_name] = lines[i + j]
-            test_cases.append(test_case)
+            args = []
+            for j in range(num_params):
+                try:
+                    args.append(eval(lines[i + j], {"__builtins__": {}}))
+                except Exception:
+                    args.append(lines[i + j])
+            test_cases.append({"args": args, "expected": None, "source": "official"})
     
     return test_cases
 
@@ -145,20 +148,15 @@ def run_local_test(code: str, test_cases: list[dict], func_name: str = None) -> 
         # Run each test case
         for i, test_case in enumerate(test_cases):
             try:
-                has_expected = "expected" in test_case
-                # New format (TestBuilder): {"args": [...], "expected": v}
-                if "args" in test_case:
-                    args = test_case["args"]
-                else:
-                    # Legacy format (official cases): {param_name: json_str}
-                    args = [eval(v) for v in test_case.values()]
+                # 统一格式: {"args": [...], "expected": v, "source": "official"|"generated"}
+                args = test_case.get("args", [])
+                expected = test_case.get("expected")
 
                 # Call function
                 result = func(*args)
 
                 # Compare with expected output if available (differential testing)
-                if has_expected:
-                    expected = test_case["expected"]
+                if expected is not None:
                     if result != expected:
                         return {
                             "success": False,
