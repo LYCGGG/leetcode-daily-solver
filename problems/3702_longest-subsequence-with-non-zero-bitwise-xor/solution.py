@@ -1,19 +1,29 @@
-from typing import List
-
 class Solution:
-    def longestSubsequence(self, nums: List[int]) -> int:
+    def longestSubsequence(self, nums: list[int]) -> int:
+        if not nums:
+            return 0
+        
+        n = len(nums)
+        
+        # 计算整个数组的异或和
         total_xor = 0
-        for x in nums:
-            total_xor ^= x
+        for num in nums:
+            total_xor ^= num
         
-        # If XOR of entire array is non-zero, whole array is valid
+        # 如果异或和非零，整个数组就是一个解
         if total_xor != 0:
-            return len(nums)
+            return n
         
-        # XOR is zero, check for non-zero elements
-        # If any element is non-zero, we can remove one to get non-zero XOR
-        if any(x != 0 for x in nums):
-            return len(nums) - 1
+        # 如果异或和为零，检查是否有非零元素
+        has_nonzero = False
+        for num in nums:
+            if num != 0:
+                has_nonzero = True
+                break
         
-        # All elements are zero, no valid subsequence
-        return 0
+        # 如果有非零元素，最长子序列长度为n-1
+        if has_nonzero:
+            return n - 1
+        else:
+            # 所有元素都是0，没有非零异或的子序列
+            return 0
