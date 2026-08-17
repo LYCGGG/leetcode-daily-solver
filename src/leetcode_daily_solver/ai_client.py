@@ -23,15 +23,17 @@ class AIClient:
     def _call_api(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 1.0,
         max_tokens: int = 1000,
     ) -> str:
         """通用 API 调用方法"""
+        # NOTE: MiMo API 使用 max_completion_tokens 而非 max_tokens，其他模型可能需要改回 max_tokens
         response = self.client.chat.completions.create(
             model=self.config.model,
             messages=messages,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
+            top_p=0.95,
         )
         msg = response.choices[0].message
         return msg.content or msg.reasoning_content or ""

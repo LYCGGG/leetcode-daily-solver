@@ -71,7 +71,9 @@ def main() -> None:
     setup_logging("DEBUG" if args.verbose else config.log_level)
 
     if args.language:
-        config = config.__replace__(language=args.language)
+        # NOTE: __replace__ 在 Python 3.13+ 才可用，3.12 及以下需用 dataclasses.replace()
+        from dataclasses import replace
+        config = replace(config, language=args.language)
 
     if args.run_once:
         asyncio.run(run_once(title_slug=args.problem))
