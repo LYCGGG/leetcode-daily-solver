@@ -5,6 +5,8 @@
 
 Automated LeetCode daily challenge solver using AI.
 
+English | [中文](README.zh-CN.md)
+
 ## Features
 
 - 🤖 **AI-Powered** - Uses AI to analyze and solve problems
