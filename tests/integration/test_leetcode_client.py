@@ -1,19 +1,23 @@
-"""Tests for LeetCode client module."""
+"""Integration tests for LeetCode client module."""
 
 import pytest
-import asyncio
+import pytest_asyncio
 from leetcode_daily_solver.config import load_config
 from leetcode_daily_solver.leetcode_client import LeetCodeClient
 
 
-@pytest.fixture
-def leetcode_client():
+pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+
+
+@pytest_asyncio.fixture
+async def leetcode_client():
     """Create LeetCode client for testing."""
     config = load_config()
-    return LeetCodeClient(config.leetcode)
+    client = LeetCodeClient(config.leetcode)
+    yield client
+    await client.close()
 
 
-@pytest.mark.asyncio
 async def test_get_daily_challenge(leetcode_client):
     """Test fetching daily challenge."""
     challenge = await leetcode_client.get_daily_challenge()
@@ -25,16 +29,10 @@ async def test_get_daily_challenge(leetcode_client):
     print(f"[OK] Daily challenge: {problem.get('title')}")
 
 
-@pytest.mark.asyncio
 async def test_get_problem(leetcode_client):
     """Test fetching problem details."""
-    # Use a known problem
     problem = await leetcode_client.get_problem("two-sum")
     assert "title" in problem
     assert "content" in problem
     assert "difficulty" in problem
     print(f"[OK] Problem: {problem.get('title')}")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

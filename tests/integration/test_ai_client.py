@@ -1,8 +1,11 @@
-"""Tests for AI client module."""
+"""Integration tests for AI client module."""
 
 import pytest
 from leetcode_daily_solver.config import load_config
 from leetcode_daily_solver.ai_client import AIClient
+
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
@@ -41,10 +44,5 @@ def test_generate_code(ai_client, sample_problem):
     code = ai_client.generate_code(sample_problem, "", "python3")
     assert len(code) > 0
     assert isinstance(code, str)
-    # Check if code contains Python syntax
     assert any(keyword in code for keyword in ["def ", "class ", "return"])
     print(f"[OK] Code length: {len(code)}")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
