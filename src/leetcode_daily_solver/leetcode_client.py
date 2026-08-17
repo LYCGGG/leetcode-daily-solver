@@ -41,7 +41,7 @@ class LeetCodeClient:
             else:
                 cookie_parts.append(self.config.session)
 
-            if "csrftoken=" not in self.config.session:
+            if "csrftoken=" not in self.config.csrf_token:
                 cookie_parts.append(f"csrftoken={self.config.csrf_token}")
 
             headers["Cookie"] = "; ".join(cookie_parts)
