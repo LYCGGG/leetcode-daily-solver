@@ -26,6 +26,16 @@ class DailySolver:
         self.storage = Storage(config.problems_dir) if config.save_problems else None
         self.test_builder = TestBuilder(self.ai)
 
+    async def close(self) -> None:
+        """Close HTTP clients to release resources."""
+        await self.leetcode.close()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
     # ========== 独立步骤方法 ==========
 
     async def fetch_problem(self, title_slug: str | None = None) -> dict:

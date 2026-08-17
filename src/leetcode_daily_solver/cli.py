@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import sys
 from pathlib import Path
 
@@ -24,72 +23,59 @@ def setup_logging(level: str) -> None:
 
 async def run_step(step: str, title_slug: str, config) -> None:
     """Run a single step of the pipeline."""
-    solver = DailySolver(config)
+    async with DailySolver(config) as solver:
+        if step == "fetch":
+            result = await solver.fetch_problem(title_slug)
+            problem_info = result["problem_info"]
+            full_problem = result["full_problem"]
+            logger.info(f"Fetched: {problem_info.get('questionFrontendId')}. {problem_info.get('title')}")
+            logger.info(f"Difficulty: {problem_info.get('difficulty')}")
+            logger.info(f"Tags: {[t.get('name') for t in full_problem.get('topicTags', [])]}")
+            return result
 
-    if step == "fetch":
-        result = await solver.fetch_problem(title_slug)
-        problem_info = result["problem_info"]
-        full_problem = result["full_problem"]
-        logger.info(f"Fetched: {problem_info.get('questionFrontendId')}. {problem_info.get('title')}")
-        logger.info(f"Difficulty: {problem_info.get('difficulty')}")
-        logger.info(f"Tags: {[t.get('name') for t in full_problem.get('topicTags', [])]}")
-        return result
-
-    elif step == "analyze":
-        # 先获取题目
-        fetched = await solver.fetch_problem(title_slug)
-        full_problem = fetched["full_problem"]
-        # 生成分析
-        analysis = solver.generate_analysis(full_problem)
-        logger.info(f"Analysis saved ({len(analysis)} chars)")
-        return analysis
-
-    elif step == "cases":
-        # 先获取题目
-        fetched = await solver.fetch_problem(title_slug)
-        full_problem = fetched["full_problem"]
-        # 生成用例
-        test_cases = solver.generate_test_cases(full_problem)
-        logger.info(f"Generated {len(test_cases)} test cases")
-        return test_cases
-
-    elif step == "code":
-        # 先获取题目和分析
-        fetched = await solver.fetch_problem(title_slug)
-        full_problem = fetched["full_problem"]
-        question_id = int(full_problem.get("questionFrontendId", 0))
-        # 尝试加载已有分析
-        analysis = solver.load_analysis(question_id, title_slug)
-        if not analysis:
-            logger.info("No existing analysis, generating...")
+        elif step == "analyze":
+            fetched = await solver.fetch_problem(title_slug)
+            full_problem = fetched["full_problem"]
             analysis = solver.generate_analysis(full_problem)
-        # 生成代码
-        code = solver.generate_code(full_problem, analysis)
-        logger.info(f"Code generated ({len(code)} chars)")
-        return code
+            logger.info(f"Analysis saved ({len(analysis)} chars)")
+            return analysis
 
-    elif step == "test-local":
-        # 先获取题目、分析、用例、代码
-        fetched = await solver.fetch_problem(title_slug)
-        full_problem = fetched["full_problem"]
-        question_id = int(full_problem.get("questionFrontendId", 0))
-        # 加载分析
-        analysis = solver.load_analysis(question_id, title_slug)
-        if not analysis:
-            analysis = solver.generate_analysis(full_problem)
-        # 加载或生成用例
-        test_cases = solver.load_test_cases(question_id, title_slug)
-        if not test_cases:
+        elif step == "cases":
+            fetched = await solver.fetch_problem(title_slug)
+            full_problem = fetched["full_problem"]
             test_cases = solver.generate_test_cases(full_problem)
-        # 生成代码
-        code = solver.generate_code(full_problem, analysis)
-        # 本地测试
-        result = solver.test_code_local(code, test_cases)
-        return result
+            logger.info(f"Generated {len(test_cases)} test cases")
+            return test_cases
 
-    else:
-        logger.error(f"Unknown step: {step}")
-        return None
+        elif step == "code":
+            fetched = await solver.fetch_problem(title_slug)
+            full_problem = fetched["full_problem"]
+            question_id = int(full_problem.get("questionFrontendId", 0))
+            analysis = solver.load_analysis(question_id, title_slug)
+            if not analysis:
+                logger.info("No existing analysis, generating...")
+                analysis = solver.generate_analysis(full_problem)
+            code = solver.generate_code(full_problem, analysis)
+            logger.info(f"Code generated ({len(code)} chars)")
+            return code
+
+        elif step == "test-local":
+            fetched = await solver.fetch_problem(title_slug)
+            full_problem = fetched["full_problem"]
+            question_id = int(full_problem.get("questionFrontendId", 0))
+            analysis = solver.load_analysis(question_id, title_slug)
+            if not analysis:
+                analysis = solver.generate_analysis(full_problem)
+            test_cases = solver.load_test_cases(question_id, title_slug)
+            if not test_cases:
+                test_cases = solver.generate_test_cases(full_problem)
+            code = solver.generate_code(full_problem, analysis)
+            result = solver.test_code_local(code, test_cases)
+            return result
+
+        else:
+            logger.error(f"Unknown step: {step}")
+            return None
 
 
 async def run_once(title_slug: str | None = None, step: str | None = None) -> None:
@@ -102,9 +88,9 @@ async def run_once(title_slug: str | None = None, step: str | None = None) -> No
             return
         return await run_step(step, title_slug, config)
     else:
-        solver = DailySolver(config)
-        result = await solver.solve(title_slug=title_slug)
-        return result
+        async with DailySolver(config) as solver:
+            result = await solver.solve(title_slug=title_slug)
+            return result
 
 
 def run_scheduled() -> None:
@@ -115,8 +101,8 @@ def run_scheduled() -> None:
     logger.info(f"Scheduled to run daily at {config.schedule.time}")
 
     async def job():
-        solver = DailySolver(config)
-        await solver.solve()
+        async with DailySolver(config) as solver:
+            await solver.solve()
 
     def run_job():
         asyncio.run(job())
