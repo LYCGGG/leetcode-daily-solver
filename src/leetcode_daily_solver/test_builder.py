@@ -23,6 +23,7 @@ class TestBuilder:
         Returns:
             [ {"args": [...], "expected": <value>, "source": "generated"}, ... ]
         """
+        # NOTE: AI 偶尔输出格式不规范导致解析失败，可降级退回官方用例。考虑增加重试或放宽解析规则。
         try:
             result = self.ai.build_testcases(problem, num_cases, language)
             if not result:

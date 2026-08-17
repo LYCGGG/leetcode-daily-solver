@@ -91,12 +91,22 @@ class AIClient:
         return result
 
     def generate_code(self, problem: dict, analysis: str, language: str) -> str:
-        """生成代码，利用之前的分析上下文"""
+        """生成代码，利用之前的分析上下文。
+
+        如果对话为空（独立运行），会先用 analysis 构建上下文。
+        """
         title = problem.get('translatedTitle', '') or problem.get('title', '')
+
+        # 如果对话为空，先构建上下文
+        if not self.conversation:
+            self.conversation = [
+                {"role": "system", "content": "你是算法专家，请用中文简洁回答。"},
+                {"role": "user", "content": f"分析以下 LeetCode 题目：\n标题: {title}\n{analysis}"},
+                {"role": "assistant", "content": analysis},
+            ]
 
         prompt = f"用{language}解决LeetCode题目：{title}。只输出代码，格式：class Solution:"
 
-        # 继续之前的对话上下文
         self.conversation.append({"role": "user", "content": prompt})
 
         code = self._call_api(self.conversation, temperature=0.1, max_tokens=2000)

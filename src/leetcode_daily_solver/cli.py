@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -21,12 +22,89 @@ def setup_logging(level: str) -> None:
     logger.add("logs/{time:YYYY-MM-DD}.log", rotation="1 day", retention="7 days")
 
 
-async def run_once(title_slug: str | None = None) -> None:
-    """Run the solver once. title_slug 指定时跑指定题目，否则跑每日题。"""
-    config = load_config()
+async def run_step(step: str, title_slug: str, config) -> None:
+    """Run a single step of the pipeline."""
     solver = DailySolver(config)
-    result = await solver.solve(title_slug=title_slug)
-    return result
+
+    if step == "fetch":
+        result = await solver.fetch_problem(title_slug)
+        problem_info = result["problem_info"]
+        full_problem = result["full_problem"]
+        logger.info(f"Fetched: {problem_info.get('questionFrontendId')}. {problem_info.get('title')}")
+        logger.info(f"Difficulty: {problem_info.get('difficulty')}")
+        logger.info(f"Tags: {[t.get('name') for t in full_problem.get('topicTags', [])]}")
+        return result
+
+    elif step == "analyze":
+        # 先获取题目
+        fetched = await solver.fetch_problem(title_slug)
+        full_problem = fetched["full_problem"]
+        # 生成分析
+        analysis = solver.generate_analysis(full_problem)
+        logger.info(f"Analysis saved ({len(analysis)} chars)")
+        return analysis
+
+    elif step == "cases":
+        # 先获取题目
+        fetched = await solver.fetch_problem(title_slug)
+        full_problem = fetched["full_problem"]
+        # 生成用例
+        test_cases = solver.generate_test_cases(full_problem)
+        logger.info(f"Generated {len(test_cases)} test cases")
+        return test_cases
+
+    elif step == "code":
+        # 先获取题目和分析
+        fetched = await solver.fetch_problem(title_slug)
+        full_problem = fetched["full_problem"]
+        question_id = int(full_problem.get("questionFrontendId", 0))
+        # 尝试加载已有分析
+        analysis = solver.load_analysis(question_id, title_slug)
+        if not analysis:
+            logger.info("No existing analysis, generating...")
+            analysis = solver.generate_analysis(full_problem)
+        # 生成代码
+        code = solver.generate_code(full_problem, analysis)
+        logger.info(f"Code generated ({len(code)} chars)")
+        return code
+
+    elif step == "test-local":
+        # 先获取题目、分析、用例、代码
+        fetched = await solver.fetch_problem(title_slug)
+        full_problem = fetched["full_problem"]
+        question_id = int(full_problem.get("questionFrontendId", 0))
+        # 加载分析
+        analysis = solver.load_analysis(question_id, title_slug)
+        if not analysis:
+            analysis = solver.generate_analysis(full_problem)
+        # 加载或生成用例
+        test_cases = solver.load_test_cases(question_id, title_slug)
+        if not test_cases:
+            test_cases = solver.generate_test_cases(full_problem)
+        # 生成代码
+        code = solver.generate_code(full_problem, analysis)
+        # 本地测试
+        result = solver.test_code_local(code, test_cases)
+        return result
+
+    else:
+        logger.error(f"Unknown step: {step}")
+        return None
+
+
+async def run_once(title_slug: str | None = None, step: str | None = None) -> None:
+    """Run the solver once."""
+    config = load_config()
+
+    if step:
+        if not title_slug:
+            logger.error("--problem is required when using --step")
+            return
+        return await run_step(step, title_slug, config)
+    else:
+        solver = DailySolver(config)
+        result = await solver.solve(title_slug=title_slug)
+        return result
 
 
 def run_scheduled() -> None:
@@ -63,7 +141,10 @@ def main() -> None:
     parser.add_argument("--config", "-c", type=Path, help="Config file path")
     parser.add_argument("--run-once", action="store_true", help="Run once and exit")
     parser.add_argument("--language", "-l", default="python3", help="Programming language")
-    parser.add_argument("--problem", "-p", type=str, default=None, help="Solve a specific problem by titleSlug (default: daily challenge)")
+    parser.add_argument("--problem", "-p", type=str, default=None, help="Solve a specific problem by titleSlug")
+    parser.add_argument("--step", "-s", type=str, default=None,
+                        choices=["fetch", "analyze", "cases", "code", "test-local"],
+                        help="Run a single step (requires --problem)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
@@ -75,8 +156,8 @@ def main() -> None:
         from dataclasses import replace
         config = replace(config, language=args.language)
 
-    if args.run_once:
-        asyncio.run(run_once(title_slug=args.problem))
+    if args.step or args.run_once:
+        asyncio.run(run_once(title_slug=args.problem, step=args.step))
     else:
         run_scheduled()
 
