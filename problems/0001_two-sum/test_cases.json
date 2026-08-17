@@ -1,0 +1,38 @@
+[
+  {
+    "args": [
+      [
+        2,
+        7,
+        11,
+        15
+      ],
+      9
+    ],
+    "expected": null,
+    "source": "official"
+  },
+  {
+    "args": [
+      [
+        3,
+        2,
+        4
+      ],
+      6
+    ],
+    "expected": null,
+    "source": "official"
+  },
+  {
+    "args": [
+      [
+        3,
+        3
+      ],
+      6
+    ],
+    "expected": null,
+    "source": "official"
+  }
+]
