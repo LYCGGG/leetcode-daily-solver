@@ -11,6 +11,7 @@
 | 5 | Cookie 字段检查 bug（已修复） | `leetcode_client.py:44` | - | ✅ 已修复 |
 | 6 | HTTP 客户端未关闭导致资源泄漏（已修复） | `solver.py`, `cli.py` | - | ✅ 已修复 |
 | 7 | eval()/exec() 执行 AI 代码有安全风险 | `local_tester.py`, `test_builder.py` | 低 | 个人项目暂不处理 |
+| 8 | LeetCode session 会过期（IP 变化等），提交时 403 | `config.yaml` | 中 | 需手动更新 |
 
 ## 待优化
 
@@ -32,4 +33,4 @@
 
 ---
 
-*最后更新：2026-08-17*
+*最后更新：2026-08-19*
