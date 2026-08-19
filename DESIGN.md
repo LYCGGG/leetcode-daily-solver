@@ -187,39 +187,23 @@ flowchart TD
     C --> E[保存题目信息]
     D --> E
     E --> F[AI 分析题目]
-    F --> G[保存分析]
-    G --> H[生成测试用例]
-    H --> I[保存用例]
-    I --> J[尝试次数 = 1]
-    
-    J --> K{尝试 <= 最大次数?}
-    K -->|是| L{第一次?}
-    L -->|是| M[生成代码]
-    L -->|否| N[修复代码]
-    M --> O[本地测试]
-    N --> O
-    
-    O --> P{本地通过?}
-    P -->|否| Q[AI 重新分析]
-    Q --> R[尝试次数 + 1]
-    R --> K
-    
-    P -->|是| S[LeetCode 测试]
-    S --> T{LeetCode 通过?}
-    T -->|否| U[AI 重新分析]
-    U --> V[尝试次数 + 1]
-    V --> K
-    
-    T -->|是| W[提交解答]
-    W --> X{提交成功?}
-    X -->|是| Y[保存解答]
-    Y --> Z[结束: 成功]
-    X -->|否| AA[回填隐藏用例]
-    AA --> AB[AI 重新分析]
-    AB --> AC[尝试次数 + 1]
-    AC --> K
-    
-    K -->|否| AD[结束: 失败]
+    F --> G[保存分析 + 生成用例]
+    G --> H[尝试次数 = 1]
+
+    H --> I{尝试 <= 最大次数?}
+    I -->|否| J[结束: 失败]
+    I -->|是| K{第一次?}
+    K -->|是| L[生成代码]
+    K -->|否| M[修复代码]
+    L --> N[本地测试 → LeetCode测试 → 提交]
+    M --> N
+
+    N --> O{结果}
+    O -->|通过| P[保存解答]
+    P --> Q[结束: 成功]
+    O -->|失败| R[回填隐藏用例 + AI 重新分析]
+    R --> S[尝试次数 + 1]
+    S --> I
 ```
 
 ### 单步执行流程
@@ -297,33 +281,22 @@ sequenceDiagram
     
     rect rgb(240, 200, 240)
         Note over Solver,AI: Step 4-6: 生成、测试、提交
-        loop 重试循环
-            Solver->>AI: generate_code(problem, analysis)
+        loop 重试循环（最多5次）
+            Solver->>AI: generate_code / fix_code
             AI-->>Solver: code
-            
-            Solver->>Solver: test_code_local(code, test_cases)
-            
-            alt 本地测试失败
-                Solver->>AI: fix_analysis(problem, analysis, error)
+
+            Solver->>Solver: 本地测试
+            Solver->>LC: LeetCode 测试
+            LC-->>Solver: test_result
+
+            alt 任一环节失败
+                Solver->>Solver: 回填隐藏用例（提交失败时）
+                Solver->>AI: fix_analysis(error, code)
                 AI-->>Solver: new_analysis
-            else 本地测试通过
-                Solver->>LC: test_code_leetcode(code)
-                LC-->>Solver: test_result
-                
-                alt LeetCode 测试失败
-                    Solver->>AI: fix_analysis()
-                    AI-->>Solver: new_analysis
-                else LeetCode 测试通过
-                    Solver->>LC: submit_solution(code)
-                    LC-->>Solver: submit_result
-                    
-                    alt 提交成功
-                        Solver->>Storage: save_solution()
-                    else 提交失败
-                        Solver->>Solver: add_failed_case()
-                        Solver->>AI: fix_analysis()
-                    end
-                end
+            else 全部通过
+                Solver->>LC: submit_solution(code)
+                LC-->>Solver: submit_result
+                Solver->>Storage: save_solution()
             end
         end
     end
