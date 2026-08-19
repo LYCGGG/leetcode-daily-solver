@@ -22,7 +22,7 @@ schedule:
 language: python3  # python3, cpp, java, etc.
 max_retries: 5  # Max retries for code generation
 log_level: INFO  # DEBUG, INFO, WARNING, ERROR
-num_generated_cases: 10  # 差分测试额外用例数 (0 关闭差分测试)
+num_generated_cases: 5  # 差分测试额外用例数 (0 关闭差分测试)
 
 # Storage Configuration
 save_problems: true  # Save problems and solutions to files

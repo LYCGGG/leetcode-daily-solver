@@ -131,7 +131,7 @@ leetcode-daily --step test-local --problem two-sum
 | `max_retries` | 最大重试次数 | 5 |
 | `save_problems` | 保存题目到文件 | true |
 | `problems_dir` | 题目保存目录 | problems |
-| `num_generated_cases` | 差分测试用例数 | 10 |
+| `num_generated_cases` | 差分测试用例数 | 5 |
 
 ## 输出结构
 

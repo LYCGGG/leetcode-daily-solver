@@ -106,6 +106,7 @@ leetcode-daily --run-once -v
 | `max_retries` | Max code generation retries | 5 |
 | `save_problems` | Save problems to files | true |
 | `problems_dir` | Directory to save problems | problems |
+| `num_generated_cases` | Number of generated test cases | 5 |
 
 ## Output Structure
 

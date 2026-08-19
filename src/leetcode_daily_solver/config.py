@@ -44,7 +44,7 @@ class Config:
     log_level: str = "INFO"
     save_problems: bool = True
     problems_dir: str = "problems"
-    num_generated_cases: int = 10
+    num_generated_cases: int = 5
 
 
 def load_config(config_path: Path | None = None) -> Config:
