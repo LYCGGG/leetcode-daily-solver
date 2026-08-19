@@ -465,6 +465,9 @@ Solver 拆分为独立方法，支持：
 | 2 | `__replace__` 在 Python 3.13+ 才可用 | `cli.py:155` | 已用 `dataclasses.replace()` |
 | 3 | TestBuilder AI 输出偶尔格式不规范 | `test_builder.py:26` | 可降级，考虑增加重试 |
 | 4 | pytest-asyncio teardown 事件循环关闭报错 | 测试框架 | 已知问题，不影响结果 |
+| 5 | Cookie 字段检查 bug | `leetcode_client.py:44` | ✅ 已修复 |
+| 6 | HTTP 客户端未关闭导致资源泄漏 | `solver.py`, `cli.py` | ✅ 已修复 |
+| 7 | eval()/exec() 安全风险 | `local_tester.py`, `test_builder.py` | 个人项目，暂不处理 |
 
 ---
 
